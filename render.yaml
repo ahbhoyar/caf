@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: caf-assistant
+    runtime: python
+    pythonVersion: 3.11
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        scope: build,runtime
+      - key: WHATSAPP_API_TOKEN
+        scope: build,runtime
+      - key: WHATSAPP_VERIFY_TOKEN
+        scope: build,runtime
+      - key: GOOGLE_SPREADSHEET_ID
+        scope: build,runtime
+      - key: GOOGLE_CREDENTIALS_JSON
+        scope: build,runtime
+      - key: DB_FILE
+        value: /data/caf_state.db
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
