@@ -148,13 +148,31 @@ async def handle_incoming(request: Request):
             phone = msg_obj["from"]
             body_text = msg_obj.get("text", {}).get("body", "Document uploaded")
             
+            # 1. Fetch the phone metadata ID dynamically provided by Meta's payload
+            metadata = entry.get("metadata", {})
+            phone_number_id = metadata.get("phone_number_id", "1171106572751707")
+            
+            # 2. Process AI completion logic
             reply = think_and_reply(phone, body_text)
             
-            requests.post(
-                f"https://graph.facebook.com/v18.0/me/messages",
-                headers={"Authorization": f"Bearer {WA_TOKEN}", "Content-Type": "application/json"},
-                json={"messaging_product": "whatsapp", "to": phone, "type": "text", "text": {"body": reply}}
+            # 3. Dispatch back via Meta's matching modern v25.0 endpoint framework
+            meta_url = f"https://graph.facebook.com/v25.0/{phone_number_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {WA_TOKEN}", 
+                "Content-Type": "application/json"
+            }
+            response = requests.post(
+                meta_url,
+                headers=headers,
+                json={
+                    "messaging_product": "whatsapp", 
+                    "to": phone, 
+                    "type": "text", 
+                    "text": {"body": reply}
+                }
             )
+            print(f"📡 Meta API Return Response Status: {response.status_code} - Log: {response.text}")
+            
     except Exception as e:
-        print(f"Error handling webhook events: {e}")
+        print(f"❌ Error handling webhook events: {e}")
     return {"status": "ok"}
