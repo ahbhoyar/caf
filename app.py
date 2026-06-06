@@ -1,67 +1,74 @@
 import os
+import httpx
 from fastapi import FastAPI, Request, Response, Query
 from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
-# Read the verification token dynamically (fallback to your hardcoded one if empty)
-EXPECTED_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "AmitTest123456")
+# --- CONFIGURATION ---
+# Replace these with values from your Meta Dashboard (Getting Started tab)
+ACCESS_TOKEN = "EAAVam4Bnn98BRorLPXzUJTHMCAt2y6OfwS8OPQrHNozj3T8qhpTVmps5FQxDsRQiicrFKgt0HnbvVPSSiuQSjyFl4ZBRFTGmB3ytVxYpZBJfG8cKiZCgvPifdlxkZChfaVdTA5It3vX4loNUqCUa38CrZC2oUYOZBUbZCLZA5shGnZAc4t3P7F2IJqNjoDPYwpJP5922IcC9JieZCrgiFJSNcOT69fd0bOeil31N6BpDuVacik8IfRYUZAaUr0yKg0gk4ySWONQdlYaLZAdjkKQJNQZDZD"
+PHONE_NUMBER_ID = "1171106572751707" # Copied from your payload logs
+VERIFY_TOKEN = "AmitTest123456"
 
 @app.get("/")
-async def health_check():
-    """
-    Main system health check endpoint.
-    Returns 200 OK to keep the Render container running.
-    """
-    return {"status": "healthy", "service": "WhatsApp Webhook Core"}
-
+async def health():
+    return {"status": "online"}
 
 @app.get("/webhook")
-async def verify_webhook(
+async def verify(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
     hub_verify_token: str = Query(None, alias="hub.verify_token")
 ):
-    """
-    Handles Meta's GET verification handshake using clean FastAPI Query aliases.
-    """
-    print(f"⚙️ Handshake Received -> Mode: {hub_mode} | Token: '{hub_verify_token}'")
-
-    if hub_mode == "subscribe" and hub_verify_token == EXPECTED_TOKEN:
-        print("✅ Handshake verification successful!")
-        # Meta expects the raw integer/string challenge returned exactly as-is
+    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
         return Response(content=str(hub_challenge), media_type="text/plain")
-
-    print(f"❌ Verification failed. Expected '{EXPECTED_TOKEN}', got '{hub_verify_token}'")
-    return Response(content="Verification token mismatch", status_code=403)
-
+    return Response(content="Token Mismatch", status_code=403)
 
 @app.post("/webhook")
-async def process_webhook(request: Request):
-    """
-    Handles incoming POST notifications containing real-time WhatsApp user text messages.
-    """
+async def handle_message(request: Request):
+    payload = await request.json()
+    
     try:
-        payload = await request.json()
-        print(f"📥 Received inbound event packet: {payload}")
+        # Navigate the JSON tree to find the message text and sender
+        entry = payload["entry"][0]
+        changes = entry["changes"][0]
+        value = changes["value"]
         
-        # Safely extract messages from Meta's nested structure
-        if "entry" in payload and payload["entry"]:
-            entry_data = payload["entry"][0]
-            if "changes" in entry_data and entry_data["changes"]:
-                change_value = entry_data["changes"][0]["value"]
-                
-                if "messages" in change_value and change_value["messages"]:
-                    message_object = change_value["messages"][0]
-                    sender_phone = message_object.get("from")
-                    message_text = message_object.get("text", {}).get("body", "")
-                    
-                    print(f"💬 Found Message from {sender_phone}: '{message_text}'")
-                    
-                    # 🚀 Add your messaging trigger logic here (e.g., calling OpenAI)
-                    
-        return JSONResponse(content={"status": "success"}, status_code=200)
-        
+        if "messages" in value:
+            message = value["messages"][0]
+            sender_id = message["from"]
+            text_body = message["text"]["body"]
+            
+            print(f"📩 New Message from {sender_id}: {text_body}")
+
+            # Send a response back
+            await send_whatsapp_message(sender_id, f"Ciao Amit! I received your message: '{text_body}'")
+
     except Exception as e:
-        print(f"❌ Error parsing POST webhook payload: {str(e)}")
-        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+        print(f"❌ Error processing payload: {e}")
+
+    return JSONResponse(content={"status": "success"}, status_code=200)
+
+async def send_whatsapp_message(to_phone_number, message_text):
+    """Sends a text message back to the user via WhatsApp API."""
+    url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
+    
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to_phone_number,
+        "type": "text",
+        "text": {"body": message_text}
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            print(f"✅ Reply sent to {to_phone_number}")
+        else:
+            print(f"❌ Failed to send reply: {response.text}")
