@@ -7,7 +7,7 @@ app = FastAPI()
 
 # --- CONFIGURATION ---
 # Replace these with values from your Meta Dashboard (Getting Started tab)
-ACCESS_TOKEN = "EAAVam4Bnn98BRorLPXzUJTHMCAt2y6OfwS8OPQrHNozj3T8qhpTVmps5FQxDsRQiicrFKgt0HnbvVPSSiuQSjyFl4ZBRFTGmB3ytVxYpZBJfG8cKiZCgvPifdlxkZChfaVdTA5It3vX4loNUqCUa38CrZC2oUYOZBUbZCLZA5shGnZAc4t3P7F2IJqNjoDPYwpJP5922IcC9JieZCrgiFJSNcOT69fd0bOeil31N6BpDuVacik8IfRYUZAaUr0yKg0gk4ySWONQdlYaLZAdjkKQJNQZDZD"
+ACCESS_TOKEN = ""
 PHONE_NUMBER_ID = "1171106572751707" # Copied from your payload logs
 VERIFY_TOKEN = "AmitTest123456"
 
