@@ -19,20 +19,28 @@ def read_root():
     return {"status": "online", "message": "WhatsApp Webhook Server is live!"}
 
 # --- 1. WEBHOOK VERIFICATION (GET HANDSHAKE) ---
+from fastapi import Request, Response
+
 @app.get("/webhook")
-def verify_webhook(
-    mode: str = Query(None, alias="hub.mode"),
-    challenge: str = Query(None, alias="hub.challenge"),
-    token: str = Query(None, alias="hub.verify_token")
-):
-    logger.info(f"Received Meta verification handshake challenge. Token received: {token}")
+async def verify_webhook(request: Request):
+    # Explicitly extract parameters using Meta's exact dot-notation keys
+    hub_mode = request.query_params.get("hub.mode")
+    hub_challenge = request.query_params.get("hub.challenge")
+    hub_verify_token = request.query_params.get("hub.verify_token")
     
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        logger.info("✅ Handshake verification successful! Matching token found.")
-        return Response(content=challenge, media_type="text/plain")
+    print(f"⚙️ Handshake Check -> Mode: {hub_mode} | Token: {hub_verify_token}")
     
-    logger.error("❌ Handshake verification failed. Tokens do not match.")
-    return Response(content="Verification failed", status_code=403)
+    # Read the target verification token from your environment configuration
+    import os
+    expected_token = os.getenv("WHATSAPP_VERIFY_TOKEN", "AmitTest123456")
+    
+    if hub_mode == "subscribe" and hub_verify_token == expected_token:
+        print("✅ Handshake verification successful!")
+        # Return the challenge value as plain text with a status 200
+        return Response(content=hub_challenge, media_type="text/plain")
+        
+    print("❌ Handshake verification failed. Tokens do not match.")
+    return Response(content="Verification token mismatch", status_code=403)
 
 # --- 2. WEBHOOK PROCESSING (POST MESSAGES) ---
 @app.post("/webhook")
