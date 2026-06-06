@@ -23,23 +23,22 @@ from fastapi import Request, Response
 
 @app.get("/webhook")
 async def verify_webhook(request: Request):
-    # Explicitly extract parameters using Meta's exact dot-notation keys
+    # Direct extraction of query parameters from Meta
     hub_mode = request.query_params.get("hub.mode")
     hub_challenge = request.query_params.get("hub.challenge")
     hub_verify_token = request.query_params.get("hub.verify_token")
     
-    print(f"⚙️ Handshake Check -> Mode: {hub_mode} | Token: {hub_verify_token}")
+    # This will print explicitly what Meta is sending vs what we expect
+    print(f"⚙️ Meta Handshake -> Mode: {hub_mode} | Received Token: '{hub_verify_token}'")
     
-    # Read the target verification token from your environment configuration
-    import os
-    expected_token = os.getenv("WHATSAPP_VERIFY_TOKEN", "AmitTest123456")
+    # Hardcode the match string directly to bypass environment variable issues
+    EXPECTED_TOKEN = "AmitTest123456"
     
-    if hub_mode == "subscribe" and hub_verify_token == expected_token:
-        print("✅ Handshake verification successful!")
-        # Return the challenge value as plain text with a status 200
+    if hub_mode == "subscribe" and hub_verify_token == EXPECTED_TOKEN:
+        print("✅ Handshake matching verified successfully!")
         return Response(content=hub_challenge, media_type="text/plain")
         
-    print("❌ Handshake verification failed. Tokens do not match.")
+    print(f"❌ Verification failed. Expected '{EXPECTED_TOKEN}', got '{hub_verify_token}'")
     return Response(content="Verification token mismatch", status_code=403)
 
 # --- 2. WEBHOOK PROCESSING (POST MESSAGES) ---
